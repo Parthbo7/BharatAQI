@@ -5,11 +5,11 @@ import { gsap } from "gsap";
 import { motion } from "framer-motion";
 import { SpaceCanvas, SpaceCanvasRef } from "./SpaceCanvas";
 import { ProblemCard } from "./ProblemCard";
-import { Dashboard } from "./Dashboard";
 import { ArrowRight, Rocket } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export const LaunchExperience: React.FC = () => {
-  const [showDashboard, setShowDashboard] = useState(false);
+  const router = useRouter();
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Layout refs
@@ -136,7 +136,7 @@ export const LaunchExperience: React.FC = () => {
   // ═══════════════════════════════════════════════════════════
   // 2. DOCKING SEQUENCE — Stars converge → merge → pulse → dashboard
   // ═══════════════════════════════════════════════════════════
-  const handleEnterPlatform = () => {
+  const handleEnterPlatform = (mode: "mission" | "predictor") => {
     if (isTransitioning) return;
     setIsTransitioning(true);
     isOrbitingRef.current = false;
@@ -152,7 +152,7 @@ export const LaunchExperience: React.FC = () => {
       !primaryStarRef.current ||
       !secondaryStarRef.current
     ) {
-      transitionToDashboard();
+      transitionToDashboard(mode);
       return;
     }
 
@@ -222,7 +222,7 @@ export const LaunchExperience: React.FC = () => {
     }, 0.85);
 
     // Dashboard transition
-    dockTl.add(() => transitionToDashboard(), 1.2);
+    dockTl.add(() => transitionToDashboard(mode), 1.2);
   };
 
   const spawnDockTrail = (x: number, y: number, type: "primary" | "secondary") => {
@@ -248,13 +248,19 @@ export const LaunchExperience: React.FC = () => {
   // ═══════════════════════════════════════════════════════════
   // 3. DASHBOARD TRANSITION — zoom-blur exit
   // ═══════════════════════════════════════════════════════════
-  const transitionToDashboard = () => {
+  const transitionToDashboard = (mode: "mission" | "predictor") => {
     spaceCanvasRef.current?.setRocketState("ascending", 0.5, 0.1);
 
     gsap.to(heroRef.current, {
       opacity: 0, scale: 1.12, filter: "blur(14px)",
       duration: 1.0, ease: "power2.inOut",
-      onComplete: () => setShowDashboard(true),
+      onComplete: () => {
+        if (mode === "mission") {
+          router.push("/missioncontrol");
+        } else {
+          router.push("/aqi");
+        }
+      },
     });
   };
 
@@ -262,9 +268,7 @@ export const LaunchExperience: React.FC = () => {
   // RENDER
   // ═══════════════════════════════════════════════════════════
 
-  if (showDashboard) {
-    return <Dashboard />;
-  }
+
 
   return (
     <div
@@ -291,7 +295,7 @@ export const LaunchExperience: React.FC = () => {
 
         {/* Launch Platform CTA */}
         <button
-          onClick={handleEnterPlatform}
+          onClick={() => handleEnterPlatform("mission")}
           disabled={isTransitioning}
           className="px-5 py-2.5 text-xs font-orbitron font-bold tracking-widest text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-orange/50 rounded-full flex items-center gap-2 transition-all duration-300 backdrop-blur-md group disabled:opacity-50"
         >
@@ -402,7 +406,7 @@ export const LaunchExperience: React.FC = () => {
           transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
         >
           <button
-            onClick={handleEnterPlatform}
+            onClick={() => handleEnterPlatform("mission")}
             disabled={isTransitioning}
             className="px-7 py-3.5 bg-gradient-to-r from-orange to-orange-flame text-white font-orbitron font-bold text-xs tracking-widest rounded-full shadow-[0_0_15px_rgba(255,106,0,0.35)] hover:shadow-[0_0_30px_rgba(255,106,0,0.6)] hover:scale-105 transition-all duration-300 flex items-center gap-2.5 border border-orange-core/50 group disabled:opacity-50"
           >
@@ -411,7 +415,7 @@ export const LaunchExperience: React.FC = () => {
           </button>
 
           <button
-            onClick={handleEnterPlatform}
+            onClick={() => handleEnterPlatform("predictor")}
             disabled={isTransitioning}
             className="px-7 py-3.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/75 hover:text-white font-orbitron font-bold text-xs tracking-widest rounded-full border border-white/10 hover:border-orange/40 transition-all duration-300 disabled:opacity-50"
           >

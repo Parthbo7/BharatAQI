@@ -1,6 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { StateSearch } from "./StateSearch";
+import { AQIPredictorMode } from "./AQIPredictorMode";
+import { RegionData, REGIONS } from "@/lib/regions";
+import India from "@svg-maps/india";
+import { motion } from "framer-motion";
+import Link from "next/link";
 import {
   Satellite,
   Compass,
@@ -14,104 +20,41 @@ import {
   ChevronRight,
   ShieldCheck
 } from "lucide-react";
-
-interface CityData {
-  name: string;
-  aqi: number;
-  status: "Good" | "Moderate" | "Poor" | "Very Poor" | "Severe";
-  color: string;
-  pm25: number;
-  pm10: number;
-  no2: number;
-  hcho: number;
-  temp: number;
-  humidity: number;
-  wind: string;
-  coords: { x: number; y: number }; // Percentage offsets on our SVG map
-}
-
-const CITIES: Record<string, CityData> = {
-  Delhi: {
-    name: "New Delhi",
-    aqi: 345,
-    status: "Very Poor",
-    color: "#ff6a00",
-    pm25: 195,
-    pm10: 310,
-    no2: 84,
-    hcho: 0.12,
-    temp: 34,
-    humidity: 55,
-    wind: "NW 12 km/h",
-    coords: { x: 38, y: 32 },
-  },
-  Mumbai: {
-    name: "Mumbai",
-    aqi: 125,
-    status: "Moderate",
-    color: "#ffb428",
-    pm25: 45,
-    pm10: 95,
-    no2: 32,
-    hcho: 0.04,
-    temp: 29,
-    humidity: 78,
-    wind: "W 18 km/h",
-    coords: { x: 25, y: 65 },
-  },
-  Bengaluru: {
-    name: "Bengaluru",
-    aqi: 68,
-    status: "Good",
-    color: "#10b981",
-    pm25: 18,
-    pm10: 42,
-    no2: 15,
-    hcho: 0.01,
-    temp: 26,
-    humidity: 62,
-    wind: "E 14 km/h",
-    coords: { x: 39, y: 81 },
-  },
-  Kolkata: {
-    name: "Kolkata",
-    aqi: 182,
-    status: "Poor",
-    color: "#f59e0b",
-    pm25: 84,
-    pm10: 160,
-    no2: 52,
-    hcho: 0.07,
-    temp: 31,
-    humidity: 70,
-    wind: "S 8 km/h",
-    coords: { x: 67, y: 47 },
-  },
-  Chennai: {
-    name: "Chennai",
-    aqi: 94,
-    status: "Good",
-    color: "#10b981",
-    pm25: 28,
-    pm10: 60,
-    no2: 22,
-    hcho: 0.03,
-    temp: 30,
-    humidity: 74,
-    wind: "SE 16 km/h",
-    coords: { x: 44, y: 84 },
-  },
-};
-
 interface LogEntry {
   id: string;
   time: string;
-  type: "info" | "success" | "warn" | "error";
+  type: "info" | "warn" | "success";
   text: string;
 }
 
-export const Dashboard: React.FC = () => {
-  const [selectedCity, setSelectedCity] = useState<CityData>(CITIES.Delhi);
+export const Dashboard: React.FC<{ initialMode?: "mission" | "predictor" }> = ({ initialMode = "mission" }) => {
+
+  const activeMode = initialMode;
+  const [selectedRegion, setSelectedRegion] = useState<RegionData | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(9);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const stateParam = params.get("state");
+      const monthParam = params.get("month");
+      if (stateParam && REGIONS[stateParam]) setSelectedRegion(REGIONS[stateParam]);
+      if (monthParam) {
+        const m = parseInt(monthParam);
+        if (!isNaN(m) && m >= 0 && m <= 11) setSelectedMonth(m);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && selectedRegion && 'id' in selectedRegion) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("state", selectedRegion.id);
+      url.searchParams.set("month", selectedMonth.toString());
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [selectedRegion, selectedMonth]);
+
   const [currentTime, setCurrentTime] = useState<string>("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [satelliteAngle, setSatelliteAngle] = useState(0);
@@ -205,7 +148,7 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="w-full min-h-screen bg-[#03050a] text-white flex flex-col font-body selection:bg-orange/30">
+    <div className={`w-full ${activeMode === "mission" ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#03050a] text-white flex flex-col font-body selection:bg-orange/30`}>
       
       {/* Background Graphic overlay */}
       <div 
@@ -252,9 +195,23 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Time and date */}
+        {/* Navigation and Time */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-mono text-white/70 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+          <div className="flex items-center gap-2 bg-white/5 p-1 rounded-lg border border-white/10">
+            <Link 
+              href="/missioncontrol" 
+              className={`px-3 py-1.5 rounded-md text-xs font-orbitron font-bold tracking-wider transition-colors ${activeMode === 'mission' ? 'bg-orange text-white shadow-[0_0_10px_rgba(255,106,0,0.4)]' : 'text-white/40 hover:text-white/80'}`}
+            >
+              MISSION CONTROL
+            </Link>
+            <Link 
+              href="/aqi" 
+              className={`px-3 py-1.5 rounded-md text-xs font-orbitron font-bold tracking-wider transition-colors ${activeMode === 'predictor' ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.4)]' : 'text-white/40 hover:text-white/80'}`}
+            >
+              AQI PREDICTOR
+            </Link>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-xs font-mono text-white/70 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
             <Clock className="w-3.5 h-3.5 text-orange-flame" />
             <span>{currentTime || "00:00:00 IST"}</span>
           </div>
@@ -262,162 +219,120 @@ export const Dashboard: React.FC = () => {
       </header>
 
       {/* DASHBOARD CONTENT GRID */}
+      {activeMode === "mission" ? (
       <main className="z-10 flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 overflow-hidden">
         
         {/* LEFT COLUMN: LIVE TELEMETRY & CITY REPORT (Span 3) */}
-        <section className="lg:col-span-3 flex flex-col gap-6 overflow-hidden">
-          
-          {/* Dynamic City Telemetry Selector */}
-          <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col gap-3">
+        <section className="lg:col-span-3 flex flex-col gap-6">
+          <div className="glass-panel p-4 rounded-xl border border-white/10 flex flex-col gap-3 shrink-0 overflow-visible relative" style={{ zIndex: 9999 }}>
             <h3 className="text-xs font-orbitron font-bold uppercase tracking-wider text-orange-flame flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-orange" />
               Sensor Selection Node
             </h3>
-            <div className="grid grid-cols-5 gap-1.5">
-              {Object.keys(CITIES).map((cKey) => {
-                const isSelected = CITIES[cKey].name === selectedCity.name;
-                return (
-                  <button
-                    key={cKey}
-                    onClick={() => setSelectedCity(CITIES[cKey])}
-                    className={`py-1 text-[10px] md:text-xs font-mono uppercase font-bold rounded border transition-all duration-300 ${
-                      isSelected
-                        ? "bg-orange/20 text-orange-flame border-orange"
-                        : "bg-white/5 text-white/60 border-white/5 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    {cKey.slice(0, 3)}
-                  </button>
-                );
-              })}
-            </div>
+            <StateSearch
+              selected={selectedRegion && 'id' in selectedRegion ? selectedRegion.id : ""}
+              onChange={(val) => setSelectedRegion(REGIONS[val as string])}
+              placeholder="Search State or Territory..."
+              className="w-full z-[60]"
+            />
           </div>
 
           {/* Active Sensor Node Reading Card */}
-          <div className="glass-panel p-5 rounded-xl border border-white/10 flex-1 flex flex-col justify-between relative overflow-hidden">
-            {/* Cybernetic details */}
-            <div className="absolute top-0 right-0 p-2 text-[8px] font-mono text-white/30">
-              NODE_ID: {selectedCity.name.toUpperCase().slice(0, 3)}_08
-            </div>
+          <div className="glass-panel p-5 rounded-xl border border-white/10 flex-1 flex flex-col justify-between relative overflow-hidden group min-h-0">
+            {selectedRegion ? (
+              <div key={selectedRegion.name} className="h-full flex flex-col justify-between animate-in fade-in slide-in-from-left-4 duration-500">
+                <div className="absolute top-0 right-0 p-2 text-[8px] font-mono text-white/30 uppercase">
+                  NODE: {selectedRegion.id.toUpperCase()}
+                </div>
 
-            <div>
-              <div className="flex items-baseline justify-between mb-1">
-                <h2 className="font-display font-extrabold text-xl text-white">
-                  {selectedCity.name}
-                </h2>
-                <span className="text-[10px] font-mono text-white/50">INDIA</span>
-              </div>
-              <p className="text-[10px] font-mono text-white/40 uppercase mb-4">
-                Fused Satellite & Surface Sensor telemetry
-              </p>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="font-display font-extrabold text-xl text-white truncate max-w-[80%]">
+                      {selectedRegion.name}
+                    </h2>
+                    <span className="text-[10px] font-mono text-white/50">INDIA</span>
+                  </div>
+                  <p className="text-[10px] font-mono text-white/40 uppercase mb-4">
+                    Fused Regional Telemetry Matrix
+                  </p>
 
-              {/* Big AQI Gauge */}
-              <div className="flex flex-col items-center justify-center my-4 relative">
-                <svg viewBox="0 0 120 120" className="w-36 h-36">
-                  {/* Gauge Background track */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="48"
-                    fill="none"
-                    stroke="#1e293b"
-                    strokeWidth="10"
-                    strokeDasharray="225"
-                    strokeLinecap="round"
-                    transform="rotate(135 60 60)"
-                  />
-                  {/* Gauge Active Fill */}
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="48"
-                    fill="none"
-                    stroke={selectedCity.color}
-                    strokeWidth="10"
-                    strokeDasharray={`${(selectedCity.aqi / 500) * 225} 300`}
-                    strokeLinecap="round"
-                    transform="rotate(135 60 60)"
-                    className="transition-all duration-1000 ease-out"
-                    style={{ filter: `drop-shadow(0 0 6px ${selectedCity.color}77)` }}
-                  />
-                </svg>
+                  <div className="flex flex-col items-center justify-center my-4 relative shrink-0">
+                    <svg viewBox="0 0 120 120" className="w-32 h-32 md:w-36 md:h-36 drop-shadow-xl">
+                      <circle cx="60" cy="60" r="48" fill="none" stroke="#1e293b" strokeWidth="10" strokeDasharray="225" strokeLinecap="round" transform="rotate(135 60 60)" />
+                      <circle cx="60" cy="60" r="48" fill="none" stroke={selectedRegion.color} strokeWidth="10" strokeLinecap="round" transform="rotate(135 60 60)" style={{ strokeDasharray: `${(selectedRegion.aqi / 500) * 225} 300`, filter: `drop-shadow(0 0 8px ${selectedRegion.color}99)` }} className="transition-all duration-1000 ease-out" />
+                    </svg>
 
-                {/* Counter inside */}
-                <div className="absolute flex flex-col items-center">
-                  <span className="text-3xl font-orbitron font-extrabold tracking-tighter">
-                    {selectedCity.aqi}
-                  </span>
-                  <span className="text-[8px] font-mono tracking-widest text-white/60 uppercase">
-                    AQI Value
-                  </span>
-                  <span
-                    className="mt-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold"
-                    style={{ backgroundColor: `${selectedCity.color}15`, color: selectedCity.color }}
-                  >
-                    {selectedCity.status}
-                  </span>
+                    <div className="absolute flex flex-col items-center mt-2">
+                      <span className="text-4xl font-orbitron font-extrabold tracking-tighter">
+                        {selectedRegion.aqi}
+                      </span>
+                      <span className="text-[8px] font-mono tracking-widest text-white/60 uppercase">AQI Value</span>
+                      <span className="mt-1.5 px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold" style={{ backgroundColor: `${selectedRegion.color}20`, color: selectedRegion.color, border: `1px solid ${selectedRegion.color}40` }}>
+                        {selectedRegion.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 mt-4 shrink-0">
+                  <div className="bg-black/30 border border-white/5 p-2 rounded-lg hover:border-white/10 transition-colors">
+                    <div className="text-[8px] font-mono text-white/40 uppercase">PM2.5 Density</div>
+                    <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1">
+                      <span>{selectedRegion.pm25}</span><span className="text-[9px] font-mono text-white/40">µg/m³</span>
+                    </div>
+                  </div>
+                  <div className="bg-black/30 border border-white/5 p-2 rounded-lg hover:border-white/10 transition-colors">
+                    <div className="text-[8px] font-mono text-white/40 uppercase">PM10 Density</div>
+                    <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1">
+                      <span>{selectedRegion.pm10}</span><span className="text-[9px] font-mono text-white/40">µg/m³</span>
+                    </div>
+                  </div>
+                  <div className="bg-black/30 border border-white/5 p-2 rounded-lg hover:border-white/10 transition-colors">
+                    <div className="text-[8px] font-mono text-white/40 uppercase">HCHO Column</div>
+                    <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1 text-orange-flame">
+                      <span>{selectedRegion.hcho}</span><span className="text-[9px] font-mono text-white/45">DU</span>
+                    </div>
+                  </div>
+                  <div className="bg-black/30 border border-white/5 p-2 rounded-lg hover:border-white/10 transition-colors">
+                    <div className="text-[8px] font-mono text-white/40 uppercase">NO2 Level</div>
+                    <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1">
+                      <span>{selectedRegion.no2}</span><span className="text-[9px] font-mono text-white/40">ppb</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/5 pt-3 mt-4 flex justify-between text-[10px] font-mono text-white/50 shrink-0">
+                  <div className="flex flex-col">
+                    <span>TEMP</span>
+                    <span className="text-white font-semibold">{selectedRegion.temp}°C</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span>HUMIDITY</span>
+                    <span className="text-white font-semibold">{selectedRegion.humidity}%</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span>WIND DRIFT</span>
+                    <span className="text-white font-semibold">{selectedRegion.wind}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Pollutant Matrix Grid */}
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <div className="bg-white/5 border border-white/5 p-2 rounded-lg">
-                <div className="text-[8px] font-mono text-white/40 uppercase">PM2.5 Density</div>
-                <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1">
-                  <span>{selectedCity.pm25}</span>
-                  <span className="text-[9px] font-mono text-white/40">µg/m³</span>
-                </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-white/40 text-sm font-mono text-center">
+                <ShieldCheck className="w-8 h-8 mb-4 opacity-50" />
+                <p>No region selected.<br/>Search for a state to view telemetry data.</p>
               </div>
-              <div className="bg-white/5 border border-white/5 p-2 rounded-lg">
-                <div className="text-[8px] font-mono text-white/40 uppercase">PM10 Density</div>
-                <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1">
-                  <span>{selectedCity.pm10}</span>
-                  <span className="text-[9px] font-mono text-white/40">µg/m³</span>
-                </div>
-              </div>
-              <div className="bg-white/5 border border-white/5 p-2 rounded-lg">
-                <div className="text-[8px] font-mono text-white/40 uppercase">HCHO Column</div>
-                <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1 text-orange-flame">
-                  <span>{selectedCity.hcho}</span>
-                  <span className="text-[9px] font-mono text-white/45">DU</span>
-                </div>
-              </div>
-              <div className="bg-white/5 border border-white/5 p-2 rounded-lg">
-                <div className="text-[8px] font-mono text-white/40 uppercase">NO2 Level</div>
-                <div className="text-sm font-semibold mt-0.5 flex items-baseline gap-1">
-                  <span>{selectedCity.no2}</span>
-                  <span className="text-[9px] font-mono text-white/40">ppb</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Environment Feed */}
-            <div className="border-t border-white/5 pt-3 mt-4 flex justify-between text-[10px] font-mono text-white/50">
-              <div className="flex flex-col">
-                <span>TEMP</span>
-                <span className="text-white font-semibold">{selectedCity.temp}°C</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span>HUMIDITY</span>
-                <span className="text-white font-semibold">{selectedCity.humidity}%</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span>WIND DRIFT</span>
-                <span className="text-white font-semibold">{selectedCity.wind}</span>
-              </div>
-            </div>
+            )}
           </div>
         </section>
 
         {/* CENTER COLUMN: INTERACTIVE MAP & AQI HEATMAP (Span 6) */}
-        <section className="lg:col-span-6 flex flex-col gap-6">
-          <div className="glass-panel p-5 rounded-xl border border-white/10 flex-1 flex flex-col relative">
-            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3">
+        <section className="lg:col-span-6 flex flex-col gap-4 lg:gap-6 overflow-hidden min-h-0 order-1 lg:order-2 h-[50vh] lg:h-auto">
+          <div className="glass-panel p-5 rounded-xl border border-white/10 flex-1 flex flex-col relative overflow-hidden">
+            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-3 shrink-0">
               <div>
                 <h3 className="text-sm font-orbitron font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-orange" />
-                  Satellite Subcontinent Heatmap
+                  National Air Quality Grid
                 </h3>
                 <span className="text-[10px] font-mono text-white/40 uppercase">
                   TROPOMI Formaldehyde (HCHO) Column Density Fused with surface particulate matter
@@ -426,160 +341,62 @@ export const Dashboard: React.FC = () => {
               {/* Heatmap Legend */}
               <div className="flex items-center gap-2 text-[9px] font-mono">
                 <span className="text-white/40">AQI:</span>
-                <div className="flex h-2 w-20 rounded overflow-hidden">
-                  <div className="w-1/4 bg-emerald-500"></div>
-                  <div className="w-1/4 bg-yellow-400"></div>
-                  <div className="w-1/4 bg-orange"></div>
-                  <div className="w-1/4 bg-red-600"></div>
+                <div className="flex h-2 w-24 rounded overflow-hidden border border-white/10">
+                  <div className="w-1/5 bg-emerald-500"></div>
+                  <div className="w-1/5 bg-[#ffb428]"></div>
+                  <div className="w-1/5 bg-[#f59e0b]"></div>
+                  <div className="w-1/5 bg-[#ff6a00]"></div>
+                  <div className="w-1/5 bg-red-600"></div>
                 </div>
                 <span className="text-white/70">50 - 500+</span>
               </div>
             </div>
 
             {/* Interactive Vector Outline Map of India with pulsing AQI heatmaps */}
-            <div className="flex-1 w-full relative flex items-center justify-center min-h-[350px]">
+            <div className="flex-1 w-full relative flex items-center justify-center min-h-0 overflow-hidden cursor-move">
               
               {/* Outer compass grid backdrop */}
               <div className="absolute w-72 h-72 rounded-full border border-white/5 flex items-center justify-center animate-[spin_120s_linear_infinite] pointer-events-none">
                 <div className="w-48 h-48 rounded-full border border-dashed border-white/10" />
               </div>
 
-              {/* Styled Vector SVG Map of India (simplified clean representation) */}
+              {/* Real @svg-maps/india vector map integration */}
               <svg
-                viewBox="0 0 350 400"
-                className="w-full h-full max-h-[420px] select-none"
+                viewBox="0 0 612 696"
+                className="w-full h-full max-h-[85%] object-contain select-none z-10 relative min-h-0 filter drop-shadow-[0_0_15px_rgba(0,0,0,0.8)]"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
-                {/* Simulated India Border Paths */}
-                <path
-                  d="M175,40 L195,50 L205,45 L200,60 L215,62 L225,50 L220,70 L210,85 L225,95 L250,90 L275,120 L270,135 L285,145 L295,135 L300,150 L285,160 L280,180 L295,190 L280,195 L255,185 L250,190 L258,200 L250,210 L228,212 L215,225 L218,240 L235,248 L220,260 L208,245 L202,260 L200,285 L182,310 L168,340 L158,365 L158,380 L150,380 L145,355 L135,320 L128,300 L122,270 L115,250 L108,230 L108,210 L125,200 L115,190 L105,185 L95,195 L88,185 L98,170 L92,150 L105,145 L102,130 L120,130 L135,145 L145,130 L150,140 L158,110 L165,95 L158,80 L165,70 Z"
-                  fill="rgba(255, 255, 255, 0.02)"
-                  stroke="rgba(255, 255, 255, 0.15)"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                  className="glow-blue"
-                />
+                {(India.locations as Array<{ id: string; path: string; name: string }>).map((location) => {
+                  const region = REGIONS[location.id];
+                  const isSelected = selectedRegion && 'id' in selectedRegion ? selectedRegion.id === location.id : false;
+                  let baseColor = "rgba(255,255,255,0.02)";
+                                    let selectedColor = "rgba(255,255,255,0.15)";
 
-                {/* Heatmap Gradients (Delhi/North Hotspot) */}
-                <circle
-                  cx="155"
-                  cy="130"
-                  r="50"
-                  fill="url(#delhi-heat)"
-                  className="animate-pulse opacity-85"
-                  style={{ animationDuration: "3s" }}
-                />
-                
-                {/* Mumbai Hotspot */}
-                <circle
-                  cx="115"
-                  cy="255"
-                  r="30"
-                  fill="url(#mumbai-heat)"
-                  className="animate-pulse opacity-70"
-                  style={{ animationDuration: "4s" }}
-                />
+                  if (region) {
+                    const aqi = region.aqi;
+                    if (aqi > 400) { baseColor = "#7f1d1d88"; selectedColor = "#ef4444"; }
+                    else if (aqi > 300) { baseColor = "#b91c1c88"; selectedColor = "#ef4444"; }
+                    else if (aqi > 200) { baseColor = "#c2410c88"; selectedColor = "#f97316"; }
+                    else if (aqi > 100) { baseColor = "#a1620788"; selectedColor = "#eab308"; }
+                    else { baseColor = "#15803d88"; selectedColor = "#22c55e"; }
+                  }
 
-                {/* Kolkata Hotspot */}
-                <circle
-                  cx="250"
-                  cy="190"
-                  r="35"
-                  fill="url(#kolkata-heat)"
-                  className="animate-pulse opacity-75"
-                  style={{ animationDuration: "3.5s" }}
-                />
-
-                {/* South Hotspot */}
-                <circle
-                  cx="160"
-                  cy="325"
-                  r="25"
-                  fill="url(#south-heat)"
-                  className="animate-pulse opacity-60"
-                  style={{ animationDuration: "5s" }}
-                />
-
-                {/* Gradient Definitions */}
-                <defs>
-                  <radialGradient id="delhi-heat" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#ff4f00" stopOpacity="0.6" />
-                    <stop offset="30%" stopColor="#ff7b00" stopOpacity="0.35" />
-                    <stop offset="65%" stopColor="#ffb428" stopOpacity="0.1" />
-                    <stop offset="100%" stopColor="#03050a" stopOpacity="0" />
-                  </radialGradient>
-                  
-                  <radialGradient id="mumbai-heat" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#ff9e00" stopOpacity="0.5" />
-                    <stop offset="50%" stopColor="#ffd15c" stopOpacity="0.15" />
-                    <stop offset="100%" stopColor="#03050a" stopOpacity="0" />
-                  </radialGradient>
-
-                  <radialGradient id="kolkata-heat" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#ff6a00" stopOpacity="0.5" />
-                    <stop offset="45%" stopColor="#ffb428" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="#03050a" stopOpacity="0" />
-                  </radialGradient>
-
-                  <radialGradient id="south-heat" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                    <stop offset="55%" stopColor="#10b981" stopOpacity="0.1" />
-                    <stop offset="100%" stopColor="#03050a" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-
-                {/* City Location Markers */}
-                {Object.values(CITIES).map((city) => {
-                  // Map coordinates of city (which are out of 100) to actual SVG viewBox coordinates
-                  const markerX = (city.coords.x / 100) * 350;
-                  const markerY = (city.coords.y / 100) * 400;
-                  const isSelected = city.name === selectedCity.name;
+                  const fill = isSelected ? selectedColor : baseColor;
+                  const strokeColor = isSelected ? "#ffffff" : "rgba(255,255,255,0.1)";
+                  const strokeWidth = isSelected ? "2" : "0.4";
 
                   return (
-                    <g
-                      key={city.name}
-                      className="cursor-pointer group"
-                      onClick={() => setSelectedCity(city)}
-                    >
-                      {/* Interactive click zone */}
-                      <circle cx={markerX} cy={markerY} r="18" fill="transparent" />
-
-                      {/* Ripple ring (for selected) */}
-                      {isSelected && (
-                        <circle
-                          cx={markerX}
-                          cy={markerY}
-                          r="10"
-                          stroke={city.color}
-                          strokeWidth="1"
-                          fill="transparent"
-                          className="animate-ping"
-                          style={{ transformOrigin: `${markerX}px ${markerY}px`, animationDuration: "1.8s" }}
-                        />
-                      )}
-
-                      {/* City Marker dot */}
-                      <circle
-                        cx={markerX}
-                        cy={markerY}
-                        r={isSelected ? "5" : "3.5"}
-                        fill={city.color}
-                        stroke="#ffffff"
-                        strokeWidth={isSelected ? "1.5" : "1"}
-                        className="transition-all duration-300 group-hover:scale-125"
-                      />
-
-                      {/* Small Label tag */}
-                      <text
-                        x={markerX + 8}
-                        y={markerY + 3}
-                        fill={isSelected ? "#ffffff" : "rgba(255, 255, 255, 0.6)"}
-                        className={`text-[9px] font-mono font-bold tracking-tight select-none pointer-events-none transition-colors duration-300`}
-                      >
-                        {city.name.split(" ")[1] || city.name} ({city.aqi})
-                      </text>
-                    </g>
+                    <motion.path
+                      key={location.id}
+                      d={location.path}
+                      animate={{ fill, stroke: strokeColor }}
+                      transition={{ duration: 0.2 }}
+                      strokeWidth={strokeWidth}
+                      strokeLinejoin="round"
+                      className={`outline-none ${region ? "cursor-pointer" : "cursor-not-allowed"}`}
+                      onClick={() => { if (region) setSelectedRegion(region); }}
+                    />
                   );
                 })}
               </svg>
@@ -677,6 +494,11 @@ export const Dashboard: React.FC = () => {
           </div>
         </section>
       </main>
+      ) : (
+        <main className="z-10 flex-1 p-4 md:p-6 flex flex-col overflow-hidden animate-in fade-in duration-500">
+          <AQIPredictorMode />
+        </main>
+      )}
 
       {/* BOTTOM PANEL: FUSION FLOW & DATASOURCES (Span 12) */}
       <footer className="z-10 px-4 md:px-6 pb-6 shrink-0 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">

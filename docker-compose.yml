@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  bharataqi-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bharataqi-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - aqi_network
+
+  bharataqi-ml:
+    build:
+      context: .
+      dockerfile: scripts/objective_1/Dockerfile.ml
+    container_name: bharataqi-ml
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./src/lib:/app/src/lib
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: python /app/scripts/objective_1/generate_results.py
+    networks:
+      - aqi_network
+
+networks:
+  aqi_network:
+    driver: bridge
