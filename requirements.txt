@@ -1,0 +1,7 @@
+earthengine-api
+tensorflow>=2.12
+scikit-learn
+pandas
+numpy
+matplotlib
+seaborn

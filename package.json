@@ -1,6 +1,8 @@
 {
-  "name": "isro",
-  "version": "0.1.0",
+  "name": "bharat-aqi",
+  "version": "1.0.0",
+  "description": "Satellite-powered air quality intelligence for India — CNN-LSTM AQI prediction & HCHO hotspot mapping using Sentinel-5P, MODIS, and ERA5 data.",
+  "author": "BharatAQI Team",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,12 +12,14 @@
   },
   "dependencies": {
     "@react-three/fiber": "^9.6.1",
+    "@svg-maps/india": "^2.0.0",
     "framer-motion": "^12.40.0",
     "gsap": "^3.15.0",
     "lucide-react": "^1.20.0",
     "next": "15.0.0",
     "react": "19.0.0-rc-65a56d0e-20241020",
     "react-dom": "19.0.0-rc-65a56d0e-20241020",
+    "recharts": "^3.8.1",
     "three": "^0.184.0"
   },
   "devDependencies": {

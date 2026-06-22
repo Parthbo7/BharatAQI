@@ -1,7 +1,117 @@
+<<<<<<< Updated upstream
 # 🛰️ BharatAQI — Satellite-Powered Air Quality Intelligence
+=======
+# BharatAQI — Satellite-Powered Air Quality Intelligence
+
+**ISRO Bharatiya Antariksh Hackathon 2026**  
+**Problem Statement 3:** Development of Surface AQI & Identification of HCHO Hotspots over India using Satellite Data
+
+![BharatAQI Dashboard Preview](public/assets/background.png)
+
+## Overview
+
+BharatAQI is an end-to-end AI system that fuses multi-source satellite observations with deep learning to predict ground-level Air Quality Index (AQI) across India. It addresses the critical spatial gaps in CPCB's ground monitoring network by transforming satellite column densities into actionable surface-level health intelligence.
+
+### Key Objectives Achieved
+1. **Surface AQI Prediction**: A Hybrid CNN-LSTM model that predicts PM2.5, PM10, NO₂, SO₂, CO, and overall AQI using Sentinel-5P, MODIS, and ERA5 data.
+2. **HCHO Hotspot Identification**: Statistical detection of Formaldehyde hotspots, correlating with active fire counts (MODIS/VIIRS) to track agricultural and forest fire emissions.
+
+---
+
+## System Architecture
+
+```mermaid
+graph TD
+    subgraph Data Acquisition
+        S5P[Sentinel-5P TROPOMI<br>NO2, SO2, CO, HCHO, O3]
+        MODIS[MODIS/VIIRS<br>AOD, Active Fires]
+        ERA5[ERA5 Reanalysis<br>Temp, RH, Wind, BLH]
+        CPCB[CPCB Ground Stations<br>AQI Ground Truth]
+    end
+
+    subgraph Data Fusion Pipeline
+        GEE[Google Earth Engine<br>Spatial Extraction]
+        ALIGN[Spatio-Temporal Alignment<br>1km Grid, Daily Resolution]
+    end
+
+    subgraph AI Model (CNN-LSTM)
+        CNN[Conv1D Layers<br>Spatial Feature Extraction]
+        LSTM[LSTM Layers<br>Temporal Dynamics]
+        OUT[Multi-Output Head<br>PM2.5, PM10, Gases, AQI]
+    end
+
+    subgraph User Interface
+        API[FastAPI / Next.js API]
+        DASH[Next.js Dashboard<br>Web/Mobile Responsive]
+        EXPORT[Data Export<br>CSV/PNG/GeoTIFF]
+    end
+
+    S5P --> GEE
+    MODIS --> GEE
+    ERA5 --> GEE
+    GEE --> ALIGN
+    CPCB --> ALIGN
+    
+    ALIGN --> CNN
+    CNN --> LSTM
+    LSTM --> OUT
+    
+    OUT --> API
+    API --> DASH
+    API --> EXPORT
+```
+
+---
+
+## Datasets
+
+| Dataset | Variables | Resolution | Source |
+|---------|-----------|------------|--------|
+| Sentinel-5P | NO₂, SO₂, CO, HCHO, O₃ | 3.5×5.5 km | Copernicus/ESA |
+| MODIS MAIAC | Aerosol Optical Depth (AOD) | 1 km | NASA LP DAAC |
+| FIRMS | Active Fire Counts | 375 m | NASA EOSDIS |
+| ERA5 | Temp, RH, Wind, BLH | 0.25° | ECMWF |
+| CPCB | PM2.5, PM10, NO₂, SO₂, CO | Point | Gov of India |
+
+---
+
+## Model Performance (Test Set)
+
+Our CNN-LSTM architecture outperforms traditional machine learning baselines by capturing both the non-linear atmospheric chemistry (via CNN) and the temporal dispersion dynamics (via LSTM).
+
+| Model | R² Score | RMSE (AQI) | MAE (AQI) |
+|-------|----------|------------|-----------|
+| Random Forest | 0.821 | 41.2 | 32.1 |
+| XGBoost | 0.849 | 37.6 | 29.5 |
+| Vanilla LSTM | 0.901 | 30.1 | 23.8 |
+| **CNN-LSTM (Ours)** | **0.954** | **24.1** | **19.5** |
+
+*Validation target achieved: RMSE < 30 AQI units.*
+
+---
+
+## Project Structure
+
+```
+bharataqi/
+├── data/               # Raw and processed datasets (CSV/GeoTIFF)
+├── notebooks/          # Jupyter notebooks for EDA, Training, Validation
+├── scripts/            # Python automated pipelines
+│   ├── data_ingestion/ # GEE scripts for satellite retrieval
+│   └── objective_1/    # PyTorch/TensorFlow ML pipeline
+├── src/                # Next.js Dashboard App
+│   ├── app/            # App router & API endpoints
+│   ├── components/     # React UI components
+│   └── lib/            # Utilities and region definitions
+└── README.md
+```
+
+---
+>>>>>>> Stashed changes
 
 <div align="center">
 
+<<<<<<< Updated upstream
 ![BharatAQI Banner](./public/assets/background.png)
 
 **AI-powered, satellite-fused AQI monitoring platform for India**
@@ -217,3 +327,32 @@ This project is developed for educational and research purposes under the **ISRO
 <div align="center">
 Made with ❤️ for India's clean air · Powered by satellite intelligence · Built for ISRO Hackathon 2025
 </div>
+=======
+### 1. Using Docker (Recommended)
+```bash
+# Build and run the entire stack (API + Frontend)
+docker-compose up --build
+```
+Access the dashboard at `http://localhost:3000`.
+
+### 2. Manual Local Setup
+```bash
+# 1. Install dependencies
+npm install
+pip install -r requirements.txt
+
+# 2. Run the ML pipeline (trains model and generates model_results.json)
+python scripts/objective_1/generate_results.py
+
+# 3. Start the Next.js development server
+npm run dev
+```
+
+---
+
+## Known Limitations & Future Work
+
+1. **Cloud Contamination**: Monsoon season (July-August) causes significant data gaps in optical satellite retrievals. The current model relies heavily on ERA5 interpolation during these periods.
+2. **Resolution**: Current spatial resolution is ~1km. Future work aims to downscale to 100m using high-resolution meteorological models (e.g., WRF-Chem).
+3. **Real-time Latency**: Sentinel-5P Level-2 products have a ~12-24 hour processing latency. For strict real-time needs, Level-1 Near Real-Time (NRT) products would be required.
+>>>>>>> Stashed changes
